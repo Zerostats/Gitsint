@@ -16,7 +16,7 @@ async def profile(user, client, out,args):
         username = user["login"]
         url = f"https://api.github.com/users/{username}"
         headers = {}
-        if "token" in args and args['token'] != None:
+        if "token" in args and args['token'] != None and args['private'] == True:
             headers = {
                 'Accept': 'application/vnd.github+json',
                 'Authorization': "Bearer {}".format(''.join(args['token'])),
