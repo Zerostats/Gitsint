@@ -1,15 +1,17 @@
-import os
 import json
+import os
 import platform
-import requests
 import subprocess
 import tarfile
 import zipfile
 from io import BytesIO
 
+import requests
+
 GITLEAKS_VERSION = "8.25.1"
 GITLEAKS_DIR = os.path.join(os.path.dirname(__file__), "../tools/gitleaks")
 GITLEAKS_BIN = os.path.join(GITLEAKS_DIR, "gitleaks")
+
 
 def setup_gitleaks():
     if os.path.exists(GITLEAKS_BIN):
@@ -59,7 +61,15 @@ def run_gitleaks_scan(repo_path):
     bin_path = setup_gitleaks()
     try:
         result = subprocess.run(
-            [bin_path, "detect", "--source", repo_path, "--no-banner", "--report-format", "json"],
+            [
+                bin_path,
+                "detect",
+                "--source",
+                repo_path,
+                "--no-banner",
+                "--report-format",
+                "json",
+            ],
             capture_output=True,
             text=True,
         )
@@ -77,10 +87,11 @@ def run_gitleaks_scan(repo_path):
         try:
             return json.loads(result.stdout)
         except json.JSONDecodeError:
-            print(f"❌ Gitleaks returned invalid JSON for {repo_path}:\n{result.stdout}")
+            print(
+                f"❌ Gitleaks returned invalid JSON for {repo_path}:\n{result.stdout}"
+            )
             return []
 
     except Exception as e:
         print(f"❌ Exception while running Gitleaks on {repo_path}: {e}")
         return []
-
