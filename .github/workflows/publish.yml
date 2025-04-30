@@ -6,7 +6,7 @@ on:
       - "v*.*.*"
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,21 +25,24 @@ jobs:
       - name: Add dynamic version plugin
         run: poetry self add poetry-dynamic-versioning
 
-      - name: Verify dynamic version
+      - name: Verify version from tag
         run: poetry version
 
-      - name: Set up PyPI credentials
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Set up PyPI token
         run: poetry config pypi-token.pypi "${{ secrets.POETRY_PYPI_TOKEN_PYPI }}"
 
-      - name: Build and publish
+      - name: 🏗 Build and publish
         run: poetry publish --build
+
       - name: 🧾 Install git-cliff
         run: |
           curl -sSL https://github.com/orhun/git-cliff/releases/download/v2.8.0/git-cliff-2.8.0-x86_64-unknown-linux-gnu.tar.gz \
-            | tar xz && 
-          sudo mv git-cliff-2.8.0/git-cliff /usr/local/bin/
+            | tar xz && sudo mv git-cliff-2.8.0/git-cliff /usr/local/bin/
 
-      - name: 📝 Generate Changelog
+      - name: 📝 Generate CHANGELOG.md
         run: git cliff -o CHANGELOG.md
 
       - name: ✅ Commit changelog (optional)

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitsint"
-version = "0.3.1"
+version = "0.0.0"
 description = "gitsint allows you to check everything from a github user."
 authors = ["Zerostats"]
 license = "MIT"
@@ -42,3 +42,13 @@ docker-run = "docker run my-gitsint-image gitsint"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins."poetry.plugin"]
+dynamic-versioning = "poetry_dynamic_versioning.plugin"
+
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
+bump = false
