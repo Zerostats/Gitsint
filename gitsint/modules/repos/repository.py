@@ -39,34 +39,52 @@ def clone_and_collect_data(repo, username, args, RESULTS_FOLDER, name, domain, m
     }
     try:
         repo_path = os.path.join(RESULTS_FOLDER, repo['name'])
-        
+
+        clone_url = repo['clone_url']  # this includes correct owner (user or org)
+
         if os.path.exists(repo_path):
-            repo = Repo(repo_path)
+            repo_obj = Repo(repo_path)
         else:
             if "token" in args and args["token"] is not None:
-                Repo.clone_from(f"https://{args['token'][0]}@github.com/{username}/{repo['name']}.git", repo_path)
+                token = args["token"][0]
+                # inject token into URL
+                auth_url = clone_url.replace("https://", f"https://{token}@")
+                Repo.clone_from(auth_url, repo_path)
             else:
-                # Check if repo already exists
-                if not os.path.exists(repo_path):
-                    Repo.clone_from(repo['clone_url'], repo_path)
-        
+                Repo.clone_from(clone_url, repo_path)
 
-        repo = Repo(repo_path)
-        
+        repo_obj = Repo(repo_path)
+
         messages = []
         authors = []
-        for commit in repo.iter_commits(all=True):
+        for commit in repo_obj.iter_commits(all=True):
             _author = {"name": commit.author.name, "email": commit.author.email}
             message = str(commit.message).strip()
-        
+
             if _author not in authors:
                 authors.append(_author)
             messages.append(message)
+
         _repo["authors"] = json.dumps(authors)
         _repo["emails"] = json.dumps([author["email"] for author in authors])
         _repo["messages"] = json.dumps(messages)
 
         return _repo, authors
+
+    except Exception as e:
+        print("Error...: " + str(e))
+        out.append({
+            "name": name,
+            "domain": domain,
+            "method": method,
+            "frequent_rate_limit": frequent_rate_limit,
+            "rateLimit": False,
+            "exists": True,
+            "others": {"Message": "Clone failed.", "errorMessage": str(e)},
+            "data": None,
+        })
+        return None, []
+
 
     except Exception as e:
         print("Error...: "  + str(e))
