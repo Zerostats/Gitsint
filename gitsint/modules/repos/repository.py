@@ -44,7 +44,7 @@ def clone_and_collect_data(repo, username, args, RESULTS_FOLDER, name, domain, m
             repo = Repo(repo_path)
         else:
             if "token" in args and args["token"] is not None:
-                Repo.clone_from(f"https://{args['token']}@github.com/{username}/{repo['name']}.git", repo_path)
+                Repo.clone_from(f"https://{args['token'][0]}@github.com/{username}/{repo['name']}.git", repo_path)
             else:
                 # Check if repo already exists
                 if not os.path.exists(repo_path):
