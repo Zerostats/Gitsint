@@ -1,8 +1,11 @@
-# **Gitsint OSINT - Github user to usernames, names and emails.**
+# 🔍 Gitsint OSINT — Extract usernames, names, emails & secrets from GitHub
 
-🕵️ Hi there! Feel free to submit issues or PR !
 
-📧 For any professional / personal inquiries or collaborations, reach out to me at: 43150869+Zerostats@users.noreply.github.com
+🕵️‍♂️ Feel free to open issues, submit PRs, or suggest modules! Contributions are very welcome.
+
+
+📧 For any professional / personal inquiries or collaborations, reach out to me at: 📧 Contact: Zerostats via [GitHub Discussions](https://github.com/Zerostats/Gitsint/discussions) or `43150869+Zerostats@users.noreply.github.com`
+
 
 ![](https://files.catbox.moe/w30lsv.png)
 
@@ -15,7 +18,7 @@ For a quick demo, you can try the bot on [telegram](http://t.me/gitsint_bot).
 
 Here are the commands you can use with the bot:
 
-# Telegram bot commands
+## Telegram bot commands
 
 - `help` - Display help message
 - `register $TOKEN` - Register your GitHub token
@@ -25,18 +28,34 @@ Here are the commands you can use with the bot:
 > `⭐ You can use your own token and star this repo to bypass this limitation.`
 
 
+Here’s an updated version of your **📃 Summary** section that includes the new `--gitleaks` capability and reflects the current state of your tool:
+
+---
+
+## 🚀 Why Use Gitsint?
+
+- 🕵️ Audit your own or others' public GitHub footprint
+- 🔐 Find exposed secrets in commits and repos
+- 🧩 Map email addresses to usernames
+- 📊 Use in OSINT, red teaming, or compliance workflows
 
 ## 📃 **Summary**
 
-*Efficiently finding name, emails and usernames from a github user.*
+*Efficiently extract usernames, names, emails, and even secrets from a GitHub account.*
 
-Gitsint is a Github osint tool. It gather all available informations from a github user.
+**Gitsint** is a GitHub OSINT tool that automates the process of extracting public and private data from GitHub profiles, repositories, and commits.
 
-+ Retrieves information using github profiles, repositories and commits .
-+ Does not alert the target.
-+ Runs on [Python 3](https://www.python.org/downloads/release/python-370/).
-+ Works on Windows, Linux, Mac OS X.
-+ Can be used as a library or a CLI tool.
+### 🔍 Features
+
++ 🧠 Retrieves data from profiles, repositories, and commit history  
++ 🔒 Scans cloned repositories with [Gitleaks](https://github.com/gitleaks/gitleaks) to uncover secrets, tokens, emails, and credentials  
++ 🦻 Does **not alert** the target (read-only, non-intrusive)  
++ ⚙️ Supports CLI and library usage  
++ 📦 Exports results as **CSV** or **JSON**  
++ 🔁 Can **clone and scan** all user/org repositories (public/private/forked) 
++ 🧪 Compatible with **Python 3.10+**  
++ 💻 Cross-platform: works on **Linux, macOS, and Windows**
+
 
 
 ## 🛠️ Installation
@@ -69,47 +88,76 @@ Gitsint can be run from the CLI and rapidly embedded within existing python appl
 
 ```console	
 usage: gitsint [-h] [--size SIZE] [--token TOKEN [TOKEN ...]] [--fork] [--private]
-               [--only-used] [--no-color] [--no-clear] [-C] [-J] [-T TIMEOUT] [--cli]
-               [--clean]
+               [--only-used] [--no-color] [--no-clear] [-C] [-J] [-T TIMEOUT]
+               [--cli] [--clean] [--output OUTPUT] [--version] [--debug]
+               [--check-update] [--gitleaks]
                USERNAME [USERNAME ...]
 
 positional arguments:
   USERNAME              Target Username
 
 options:
-  -h, --help            show this help message and exit
-  --size SIZE           Set max size value (default 50000)
+  -h, --help            Show this help message and exit
+  --size SIZE           Set max repo size in KB (default: 50000)
   --token TOKEN [TOKEN ...]
-                        API token
+                        API token (required for private or org access)
   --fork                Include forked repositories
   --private             Include private repositories
-  --only-used           Displays only the sites used by the target username address.
-  --no-color            Don't color terminal output
-  --no-clear            Do not clear the terminal to display the results
-  -C, --csv             Create a CSV with the results
-  -J, --json            Create a JSON with the results
-  -T TIMEOUT, --timeout TIMEOUT
-                        Set max timeout value (default 10)
-  --cli                 Print the response in JSON format
+  --only-used           Display only the platforms used by the target
+  --no-color            Disable colored terminal output
+  --no-clear            Prevent terminal clearing before display
+  -C, --csv             Save results to CSV
+  -J, --json            Save results to JSON
+  -T, --timeout TIMEOUT Set max timeout (default: 10 seconds)
+  --cli                 Output raw JSON result to console
+  --clean               Clean and reset previous result set
+  --output OUTPUT       Set custom output folder (default: ./output)
+  --version             Show version and exit
+  --debug               Enable debug logging
+  --check-update        Check for latest version on PyPI and auto-update
+  --gitleaks            Run https://github.com/gitleaks/gitleaks to detect secrets in all cloned repositories
+
+
 ```
 
 
 ### 📚 CLI Example
 
 ```console
-# By size + fork
-gitsint exemple --size 5000 --fork
+# Basic public scan
+gitsint exemple
 
-# Using a token
-gistsint exemple --token $TOKEN
+# Scan including forks
+gitsint exemple --fork
 
-# Private footprints /!\ have to match own username
-gitsint exemple --token $TOKEN --private
+# Limit by max repo size (in KB)
+gitsint exemple --size 5000
+
+# Use GitHub token (required for --private)
+gitsint exemple --token $TOKEN
+
+# Scan own private repos
+gitsint yourname --token $TOKEN --private
+
+# Save output to a specific folder
+gitsint exemple --output ./my-results
+
+# Export to JSON + CSV
+gitsint exemple --csv --json
+
+# Run Gitleaks scan on all cloned repos
+gitsint exemple --token $TOKEN --private --gitleaks
+
+# Check for Gitsint updates
+gitsint exemple --check-update
 
 
 ```
 
 ### 📈 Python Example
+
+Gitsint can be imported as a module to run targeted scans in your own scripts:
+
 
 ```python
 import trio
@@ -155,10 +203,48 @@ For each module, data is returned in a standard dictionary with the following js
 Rate limited? Use a token.
 
 
+## 🧪 Development
+
+Want to contribute or test modules locally? Here's how to get started.
+
+### 🔧 Poetry-based Setup (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/zerostats/gitsint.git
+cd gitsint
+
+# Install poetry if you haven't
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Install dependencies
+poetry install
+
+# Activate the virtual environment
+poetry shell
+
+# Run the CLI
+poetry run gitsint username
+```
+
+### 🔍 Useful Dev Commands
+
+```bash
+poetry run black gitsint/         # Format code
+poetry run isort gitsint/         # Sort imports
+```
+
+### 💡 Dev Notes
+
+* Modules live in gitsint/modules/ and are fully async
+* Use out.append({...}) to return module results
+* Optional flags (--token, --gitleaks, etc.) are available in the args object
+
+
+
 ## TODO
 
 [ ] - Add confidence
-[ ] - Implement git SDK
 
 
 
