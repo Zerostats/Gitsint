@@ -9,7 +9,7 @@ __pycache__/
 # Custom test
 
 test.py
-
+tools/
 
 #Results
 output/

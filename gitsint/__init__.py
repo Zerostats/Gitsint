@@ -178,7 +178,30 @@ def print_result(data,args,user,start_time,functions):
 
                 
             print_json(rdata,args)
+        elif rdata is not None and exists == True and others is None:
+            print("")
+            websiteprint = print_color("[~] " + domain, "cyan", args)
+            print(websiteprint)
 
+            if isinstance(rdata, str):
+                rdata = json.loads(rdata)
+
+            # Handle Gitleaks scan output
+            if results["name"] == "gitleaks":
+                for leak_entry in rdata if isinstance(rdata, list) else [rdata]:
+                    repo_name = leak_entry.get("repository", "unknown")
+                    leaks = leak_entry.get("leaks", [])
+                    if leaks:
+                        print(print_color(f"  🕵️  Leaks found in {repo_name}:", "red", args))
+                        for leak in leaks:
+                            rule = leak.get("rule", "unknown")
+                            file = leak.get("file", "unknown")
+                            line = leak.get("line", "?")
+                            secret = leak.get("secret", "")[:8] + "..."  # mask
+                            print(f"    - {rule} in {file}:{line} → {print_color(secret, 'yellow', args)}")
+            else:
+                # Fallback: default JSON printer for other modules
+                print_json(rdata, args)
             
 
     
@@ -323,9 +346,14 @@ async def maincore():
                     help="Enable debug mode")
     parser.add_argument("--check-update", action="store_true", dest="check_update",
                     help="Force a check for the latest version of gitsint on PyPI", default=False)
+    parser.add_argument("--gitleaks", action="store_true", dest="gitleaks", help="Run gitleaks against all cloned repos")
 
 
     args = parser.parse_args()
+
+    if args.gitleaks:
+        from gitsint.utils import gitleaks
+        gitleaks.setup_gitleaks()
 
     credit(args)
     if args.check_update:

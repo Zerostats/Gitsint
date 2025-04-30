@@ -5,6 +5,7 @@ import os
 import json
 import concurrent.futures
 from collections import Counter
+from gitsint.utils import gitleaks
 
 # Get the directory of the current script file
 current_dir = os.path.dirname(__file__)
@@ -50,6 +51,8 @@ def clone_and_collect_data(repo, username, args, RESULTS_FOLDER, name, domain, m
         "description": repo['description'],
         "authors": [],
     }
+    repo_obj = None
+
     try:
         repo_path = os.path.join(RESULTS_FOLDER, repo['name'])
 
@@ -66,7 +69,24 @@ def clone_and_collect_data(repo, username, args, RESULTS_FOLDER, name, domain, m
             else:
                 Repo.clone_from(clone_url, repo_path)
 
-        repo_obj = Repo(repo_path)
+        if args.get("gitleaks"):
+            leaks = gitleaks.run_gitleaks_scan(repo_path)
+
+            if leaks:
+                out.append({
+                    "name": "gitleaks",
+                    "domain": "repository",
+                    "method": "scan",
+                    "rateLimit": False,
+                    "exists": True,
+                    "others": None,
+                    "data": json.dumps({
+                        "repository": repo['full_name'],
+                        "leaks": leaks
+                    })
+                })
+
+
 
         messages = []
         authors = []
