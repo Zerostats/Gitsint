@@ -4,7 +4,6 @@ import httpx
 import trio
 
 
-from subprocess import Popen, PIPE
 import os
 from argparse import ArgumentParser
 import csv
@@ -13,18 +12,20 @@ import time
 import importlib
 import pkgutil
 import json
-
+import subprocess
 
 from gitsint.instruments import TrioProgress
-import os
+from importlib.metadata import version, PackageNotFoundError
 
 DEBUG        = True
 OUTPUT_PATH  = os.path.abspath(os.path.join(os.path.dirname(__file__), "../output"))
 json_data = []
 username_FORMAT = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
-__version__ = "1.0"
-
+try:
+    __version__ = version("gitsint")
+except PackageNotFoundError:
+    __version__ = "dev"  # fallback for development or when not installed
 
 def import_submodules(package, recursive=True):
     """Get all the Gitint submodules"""
@@ -50,28 +51,36 @@ def get_functions(modules,args=None):
             functions.append(modu.__dict__[site])
     return functions
 
+
+
 def check_update():
-    """Check and update gitsint if not the last version"""
-    check_version = httpx.get("https://pypi.org/pypi/gitsint/json")
-    if check_version.json()["info"]["version"] != __version__:
-        if os.name != 'nt':
-            p = Popen(["pip3",
-                       "install",
-                       "--upgrade",
-                       "gitsint"],
-                      stdout=PIPE,
-                      stderr=PIPE)
+    """Check and update gitsint if not the latest version on PyPI."""
+    try:
+        response = httpx.get("https://pypi.org/pypi/gitsint/json", timeout=5)
+        response.raise_for_status()
+        latest_version = response.json().get("info", {}).get("version", "")
+
+        if latest_version and latest_version != __version__:
+            print(f"A new version of gitsint is available: {latest_version} (current: {__version__})")
+            print("Updating...")
+
+            pip_cmd = ["pip", "install", "--upgrade", "gitsint"]
+            process = subprocess.run(pip_cmd, capture_output=True, text=True)
+
+            if process.returncode == 0:
+                print("✅ gitsint has been updated successfully.")
+                print("Please restart the tool.")
+                exit(0)
+            else:
+                print("❌ Update failed.")
+                print("Error output:\n", process.stderr)
         else:
-            p = Popen(["pip",
-                       "install",
-                       "--upgrade",
-                       "gitsint"],
-                      stdout=PIPE,
-                      stderr=PIPE)
-        (output, err) = p.communicate()
-        p_status = p.wait()
-        print("gitsint has just been updated, you can restart it.")
-        exit()
+            print("✅ gitsint is up to date.")
+    except httpx.RequestError as e:
+        print(f"⚠️ Failed to check for updates (network issue): {e}")
+    except Exception as e:
+        print(f"⚠️ Unexpected error during update check: {e}")
+
 
 def credit(args):
     """Print Credit"""
@@ -312,11 +321,15 @@ async def maincore():
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--debug", default=False, required=False,action="store_true",dest="debug",
                     help="Enable debug mode")
-    #check_update()
+    parser.add_argument("--check-update", action="store_true", dest="check_update",
+                    help="Force a check for the latest version of gitsint on PyPI", default=False)
+
+
     args = parser.parse_args()
-    
 
     credit(args)
+    if args.check_update:
+        check_update()
     username=args.username[0]
 
     user = fetch_user(username,args)
