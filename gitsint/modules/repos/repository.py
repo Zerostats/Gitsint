@@ -3,7 +3,6 @@ import concurrent.futures
 import json
 import os
 from collections import Counter
-
 from git import Repo
 
 from gitsint import *

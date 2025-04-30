@@ -5,7 +5,6 @@ import subprocess
 import tarfile
 import zipfile
 from io import BytesIO
-
 import requests
 
 GITLEAKS_VERSION = "8.25.1"
