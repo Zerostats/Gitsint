@@ -13,23 +13,36 @@ current_dir = os.path.dirname(__file__)
 root_dir = os.path.abspath(os.path.join(current_dir, "../../.."))
 
 async def fetch_repository(user, client, out, args):
-    repos = {}
-
     username = user["login"]
-    url = f"https://api.github.com/users/{username}/repos?per_page=100"
     headers = {}
+    repos = []
+    page = 1
+
     if "token" in args and args['token'] is not None:
         headers = {
             'Accept': 'application/vnd.github+json',
-            'Authorization': "Bearer {}".format(''.join(args['token'])),
+            'Authorization': f"Bearer {args['token'][0]}",
             'X-GitHub-Api-Version': '2022-11-28',
         }
-        if "private" in args and args['private'] == True:
-            url = f"https://api.github.com/user/repos?per_page=100"
 
-    repos = await client.get(url, headers=headers)
-    
-    return repos.json()
+    if "private" in args and args['private'] is True:
+        base_url = "https://api.github.com/user/repos?per_page=100"
+    else:
+        base_url = f"https://api.github.com/users/{username}/repos?per_page=100"
+
+    while True:
+        url = f"{base_url}&page={page}"
+        response = await client.get(url, headers=headers)
+        if response.status_code != 200:
+            break
+        page_data = response.json()
+        if not page_data:
+            break
+        repos.extend(page_data)
+        page += 1
+
+    return repos
+
 
 def clone_and_collect_data(repo, username, args, RESULTS_FOLDER, name, domain, method, frequent_rate_limit, out):
     _repo = {
