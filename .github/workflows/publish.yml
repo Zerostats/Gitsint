@@ -57,4 +57,4 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           git add CHANGELOG.md
           git commit -m "chore: update changelog for $GITHUB_REF_NAME" || echo "Nothing to commit"
-          git push origin HEAD:refs/heads/main
+          git push origin HEAD:refs/heads/master
