@@ -1,10 +1,14 @@
 [tool.poetry]
 name = "gitsint"
-version = "0.2.1"
+version = "0.3.0"
 description = "gitsint allows you to check everything from a github user."
 authors = ["Zerostats"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/zerostats/gitsint"
+repository = "https://github.com/zerostats/gitsint"
+keywords = ["osint", "github", "gitleaks", "username", "email", "cli", "security", "infosec"]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
