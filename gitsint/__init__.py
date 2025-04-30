@@ -232,39 +232,36 @@ def print_json(json_obj, args, depth=0):
 
 
 
-def export_csv(data,args,username):
-    """Export result to csv"""
-    if args.csvoutput == True:
-        now = datetime.now()
-        timestamp = datetime.timestamp(now)
-        name_file="gitsint_"+str(round(timestamp))+"_"+username+"_results.csv"
-        
-        # Create folder if it doesn't exist
-        if not os.path.exists(OUTPUT_PATH):
-            os.makedirs(OUTPUT_PATH)
-        
-        file_path = os.path.join(OUTPUT_PATH, name_file)
-        
+def export_csv(data, args, username):
+    """Export result to CSV or JSON"""
+    output_dir = args.output if args.output else OUTPUT_PATH
+
+    now = datetime.now()
+    timestamp = datetime.timestamp(now)
+
+    if args.csvoutput:
+        name_file = f"gitsint_{round(timestamp)}_{username}_results.csv"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        file_path = os.path.join(output_dir, name_file)
+
         with open(file_path, 'w', encoding='utf8', newline='') as output_file:
-            fc = csv.DictWriter(output_file,fieldnames=data[0].keys())
+            fc = csv.DictWriter(output_file, fieldnames=data[0].keys())
             fc.writeheader()
             fc.writerows(data)
-        print("All results have been exported to "+file_path)
 
-    # Add code to export data as JSON
-    if args.jsonoutput == True:
-        now = datetime.now()
-        timestamp = datetime.timestamp(now)
-        name_file="gitsint_"+str(round(timestamp))+"_"+username+"_results.json"
-        
-        if not os.path.exists(OUTPUT_PATH):
-            os.makedirs(OUTPUT_PATH)
-        
-        file_path = os.path.join(OUTPUT_PATH, name_file)
-        
+        print("All results have been exported to " + file_path)
+
+    if args.jsonoutput:
+        name_file = f"gitsint_{round(timestamp)}_{username}_results.json"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        file_path = os.path.join(output_dir, name_file)
+
         with open(file_path, 'w', encoding='utf8') as output_file:
             json.dump(data, output_file, indent=4)
-        exit("All results have been exported to "+file_path)
+
+        exit("All results have been exported to " + file_path)
 
 async def launch_module(module,profile, client, out, args):
     data={'profile': 'aprofile', 'friends': 'friends', 'repository': 'repository', 'track': 'track'}
@@ -310,6 +307,11 @@ async def maincore():
                     help="Print the response in JSON format")
     parser.add_argument("--clean", default=False, required=False,action="store_true",dest="cli",
                     help="Print the response in JSON format")
+    parser.add_argument("--output", type=str, required=False, dest="output",
+                    help="Specify custom output directory path")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--debug", default=False, required=False,action="store_true",dest="debug",
+                    help="Enable debug mode")
     #check_update()
     args = parser.parse_args()
     

@@ -119,7 +119,7 @@ async def repository(user, client, out, args):
                     "data": None
                 })
         else:
-            RESULTS_FOLDER = os.path.join(root_dir, f"results/{username}")
+            RESULTS_FOLDER = os.path.join(args['output'], username) if 'output' in args and args['output'] else os.path.join(root_dir, f"results/{username}")
             os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
             if "fork" in args and not args['fork']:
