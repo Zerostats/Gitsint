@@ -18,7 +18,9 @@ For a quick demo, you can try the bot on [telegram](http://t.me/gitsint_bot).
 
 Here are the commands you can use with the bot:
 
-## Telegram bot commands
+## Telegram bot commands  
+
+Atm the bot is down, will be fixed.
 
 - `help` - Display help message
 - `register $TOKEN` - Register your GitHub token
