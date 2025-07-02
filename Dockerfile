@@ -1,20 +1,25 @@
-FROM python:3.11-slim-bullseye
-RUN apt-get update && \
-    apt-get install -y curl
+FROM python:3.12-slim
 
-RUN curl -sSL https://install.python-poetry.org | python -
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Put Poetry on the path.
-ENV PATH=/root/.local/bin:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        libffi-dev \
+        git \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV GIT_PYTHON_REFRESH=quiet
+RUN pip install --no-cache-dir poetry
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock* /app/
 
-COPY . .
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
 
-RUN pip install -e .
+COPY . /app
 
-ENTRYPOINT []
+EXPOSE 8000
+

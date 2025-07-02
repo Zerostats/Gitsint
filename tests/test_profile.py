@@ -7,7 +7,6 @@ from gitsint.modules.repos.repository import repository as gitsint_repos
 from gitsint.modules.profile.profile import profile as gitsint_profile
 
 
-print("ok")
 class TestGitsintModules(unittest.TestCase):
     async def test_profile(self):
         

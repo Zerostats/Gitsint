@@ -3,11 +3,15 @@ import concurrent.futures
 import json
 import os
 from collections import Counter
-from git import Repo
+import logging
+from typing import Tuple, List, Dict
+from git import Repo, InvalidGitRepositoryError, NoSuchPathError
+from pathlib import Path          # ✅ nouvel import
 
 from gitsint import *
 from gitsint.utils import gitleaks
 
+logger = logging.getLogger(__name__)
 # Get the directory of the current script file
 current_dir = os.path.dirname(__file__)
 
@@ -21,7 +25,8 @@ async def fetch_repository(user, client, out, args):
     repos = []
     page = 1
 
-    if "token" in args and args["token"] is not None:
+    # Correction : vérification plus robuste pour le token
+    if "token" in args and args["token"] is not None and isinstance(args["token"], (list, tuple)) and len(args["token"]) > 0:
         headers = {
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {args['token'][0]}",
@@ -46,98 +51,136 @@ async def fetch_repository(user, client, out, args):
 
     return repos
 
-
 def clone_and_collect_data(
-    repo, username, args, RESULTS_FOLDER, name, domain, method, frequent_rate_limit, out
-):
-    _repo = {
-        "name": repo["name"],
-        "description": repo["description"],
-        "authors": [],
-    }
-    repo_obj = None
+    repo: dict,
+    username: str,
+    args: dict,
+    results_folder: str,
+    out: list,
+) -> Tuple[dict | None, List[Dict[str, str]]]:
+    if repo is None:
+        print("Error: repo is None!")
+        return None, []
+
+    if not isinstance(repo, dict):
+        print(f"Error: repo is not a dict, it's {type(repo)}")
+        return None, []
+
+    repo_name = repo.get('name', 'Unknown')
+    print(f"Processing repo: {repo_name}")
+
+    required_keys = ['name', 'clone_url', 'full_name']
+    for key in required_keys:
+        if key not in repo:
+            print(f"Error: repo missing key {key}")
+            return None, []
 
     try:
-        repo_path = os.path.join(RESULTS_FOLDER, repo["name"])
+        repo_path = Path(results_folder) / repo_name
+        print(f"Repo path: {repo_path}")
 
-        clone_url = repo["clone_url"]  # this includes correct owner (user or org)
-
-        if os.path.exists(repo_path):
-            repo_obj = Repo(repo_path)
-        else:
-            if "token" in args and args["token"] is not None:
-                token = args["token"][0]
-                # inject token into URL
-                auth_url = clone_url.replace("https://", f"https://{token}@")
-                Repo.clone_from(auth_url, repo_path)
+        try:
+            if repo_path.exists():
+                repo_obj = Repo(repo_path)
             else:
-                Repo.clone_from(clone_url, repo_path)
+                clone_kwargs = {}
+                token = None
+                token_value = args.get("token")
+                if token_value is not None:
+                    if isinstance(token_value, (list, tuple)) and len(token_value) > 0:
+                        token = token_value[0]
+                    else:
+                        token = token_value
 
-        if args.get("gitleaks"):
-            leaks = gitleaks.run_gitleaks_scan(repo_path)
+                if token:
+                    clone_kwargs["env"] = {"GIT_ASKPASS": "echo", "GIT_PASSWORD": token}
 
-            if leaks:
-                out.append(
-                    {
-                        "name": "gitleaks",
-                        "domain": "repository",
-                        "method": "scan",
-                        "rateLimit": False,
-                        "exists": True,
-                        "others": None,
-                        "data": json.dumps(
-                            {"repository": repo["full_name"], "leaks": leaks}
-                        ),
-                    }
-                )
+                clone_url = repo.get('clone_url')
+                if clone_url is None:
+                    print("Error: clone_url is None")
+                    return None, []
 
-        messages = []
-        authors = []
+                try:
+                    repo_obj = Repo.clone_from(clone_url, repo_path, **clone_kwargs)
+                    print(f"Cloned repo to {repo_path}")
+                except Exception as e:
+                    print(f"Error cloning repo: {e}")
+                    return None, []
+
+            if not hasattr(repo_obj, 'head') or not repo_obj.head.is_valid():
+                logger.warning("Dépôt %s sans commit", repo.get("full_name", "unknown"))
+                return None, []
+
+            print("Extracting commits...")
+            authors, messages = _extract_commits(repo_obj)
+            print(f"Extracted {len(authors)} authors and {len(messages)} messages")
+
+            if not isinstance(authors, list):
+                print(f"Error: authors is not a list, it's {type(authors)}")
+                authors = []
+
+            valid_authors = []
+            for a in authors:
+                if a is None:
+                    print("Warning: found None in authors list")
+                    continue
+                if not isinstance(a, dict):
+                    print(f"Warning: author is not a dict: {a}")
+                    continue
+                valid_authors.append(a)
+            authors = valid_authors
+
+            try:
+                response_data = {
+                    "name": repo.get("name"),
+                    "description": repo.get("description"),
+                    "authors": json.dumps(authors),
+                    "emails": json.dumps(
+                        [a.get("email", "unknown@example.com") for a in authors]
+                        if authors else []
+                    ),
+                    "messages": json.dumps(messages),
+                }
+                print("Response data constructed successfully")
+                return response_data, authors
+            except Exception as e:
+                print(f"Error constructing response data: {e}")
+                return None, []
+
+        except (InvalidGitRepositoryError, NoSuchPathError) as e:
+            logger.error("Clone failed for %s: %s", repo.get("full_name", "unknown"), e, exc_info=True)
+            return None, []
+
+    except Exception as e:
+        print(f"Unexpected error in clone_and_collect_data: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, []
+
+
+
+def _extract_commits(repo_obj: Repo) -> Tuple[List[dict], List[str]]:
+    authors = []
+    messages = []
+    try:
         for commit in repo_obj.iter_commits(all=True):
-            _author = {"name": commit.author.name, "email": commit.author.email}
-            message = str(commit.message).strip()
+            try:
+                author_name = commit.author.name if commit.author and commit.author.name else "Unknown"
+                author_email = commit.author.email if commit.author and commit.author.email else "unknown@example.com"
+                author = {"name": author_name, "email": author_email}
+            except AttributeError:
+                author = {"name": "Unknown", "email": "unknown@example.com"}
 
-            if _author not in authors:
-                authors.append(_author)
+            if author not in authors:
+                authors.append(author)
+
+            message = commit.message.strip() if commit.message else ""
             messages.append(message)
-
-        _repo["authors"] = json.dumps(authors)
-        _repo["emails"] = json.dumps([author["email"] for author in authors])
-        _repo["messages"] = json.dumps(messages)
-
-        return _repo, authors
-
     except Exception as e:
-        print("Error...: " + str(e))
-        out.append(
-            {
-                "name": name,
-                "domain": domain,
-                "method": method,
-                "frequent_rate_limit": frequent_rate_limit,
-                "rateLimit": False,
-                "exists": True,
-                "others": {"Message": "Clone failed.", "errorMessage": str(e)},
-                "data": None,
-            }
-        )
-        return None, []
+        print(f"Error extracting commits: {e}")
 
-    except Exception as e:
-        print("Error...: " + str(e))
-        out.append(
-            {
-                "name": name,
-                "domain": domain,
-                "method": method,
-                "frequent_rate_limit": frequent_rate_limit,
-                "rateLimit": False,
-                "exists": True,
-                "others": {"Message": "Clone failed.", "errorMessage": str(e)},
-                "data": None,
-            }
-        )
-        return None, []
+    return authors, messages
+
 
 
 async def repository(user, client, out, args):
@@ -243,17 +286,14 @@ async def repository(user, client, out, args):
             with concurrent.futures.ThreadPoolExecutor() as executor:
 
                 future_to_repo = {
-                    executor.submit(
+                        executor.submit(
                         clone_and_collect_data,
                         repo,
+
                         username,
                         args,
                         RESULTS_FOLDER,
-                        name,
-                        domain,
-                        method,
-                        frequent_rate_limit,
-                        out,
+                        out,            # ⬅️ dernier param.
                     ): repo
                     for repo in repos
                 }
